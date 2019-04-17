@@ -1,4 +1,4 @@
-from graph import generate_rand_graph, Cut, print_adj
+from examples.graph import generate_rand_graph, Cut, print_adj
 from algorithms.random_greedy import random_greedy
 from algorithms.brute_force import brute_force
 from util import get_mean
