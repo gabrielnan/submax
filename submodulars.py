@@ -31,6 +31,15 @@ class Submodular(ABC):
         """
         return self.N
 
+    def unreduce(self, S):
+        """
+        Unreduces solution
+
+        :param S: subset solution
+        :return: unreduced subset for solution of original problem
+        """
+        return S
+
     def __len__(self):
         return len(self.N)
 
@@ -56,6 +65,46 @@ class Linear(Submodular):
         return self.weights[u]
 
 
+class Cut(Submodular):
+    def __init__(self, adj):
+        """
+        Constructor
+
+        :param adj: adjacency matrix
+        """
+        self.n = len(adj)
+        super().__init__(set(range(self.n)))
+        self.adj = adj
+        self.cut_cache = dict()
+        self.marginal_cache = dict()
+
+    def eval(self, S):
+        S = S if isinstance(S, set) else set(S)
+        cut = 0
+        for v in range(self.n):
+            for u in range(v + 1, self.n):
+                if (v in S and u not in S) or (v not in S and u in S):
+                    cut += self.adj[u, v]
+        return cut
+
+    def marginal(self, S, u):
+        """
+        Marginal cut value increase when adding u to S
+
+        :param S: subset of V (iterable)
+        :param u: vertex in V
+        :return: marginal increase cut increase
+        """
+        S = S if isinstance(S, set) else set(S)
+        marginal = 0
+        for v in range(self.n):
+            if v in S:
+                marginal -= self.adj[u, v]
+            else:
+                marginal += self.adj[u, v]
+        return marginal
+
+
 class Dummy(Submodular):
     def __init__(self, submod, num_dummies):
         """
@@ -70,50 +119,29 @@ class Dummy(Submodular):
         self.submod = submod
 
     def eval(self, S):
+        S = S if isinstance(S, set) else set(S)
         return self.submod.eval(S - self.dummies)
 
     def marginal(self, S, u):
         if u in self.dummies:
             return 0
+        S = S if isinstance(S, set) else set(S)
         return self.submod.marginal(S - self.dummies, u)
 
+    def unreduce(self, S):
+        return S - self.dummies
 
-class Cut(Submodular):
-    def __init__(self, adj):
-        self.n = len(adj)
-        super().__init__(set(range(self.n)))
-        self.adj = adj
-        self.cut_cache = dict()
-        self.marginal_cache = dict()
+
+class Complement(Submodular):
+    def __init__(self, submod):
+        super().__init__(submod.universe())
+        self.submod = submod
 
     def eval(self, S):
-        # if S in self.cut_cache:
-        #     return self.cut_cache[S]
-        S = S if isinstance(S, set) else set(S)
-        cut = 0
-        for v in range(self.n):
-            for u in range(v + 1, self.n):
-                if (v in S and u not in S) or (v not in S and u in S):
-                    cut += self.adj[u, v]
-        # self.cut_cache[S] = cut
-        return cut
+        return self.submod(self.N - S)
 
     def marginal(self, S, u):
-        """
-        Marginal cut value increase when adding u to S
+        return - self.submod.marginal(u, S - {u})
 
-        :param S: subset of V (iterable)
-        :param u: vertex in V
-        :return: marginal increase cut increase
-        """
-        # if (S, u) in self.marginal_cache:
-        #     return self.marginal_cache[(S, u)]
-        S = S if isinstance(S, set) else set(S)
-        marginal = 0
-        for v in range(self.n):
-            if v in S:
-                marginal -= self.adj[u, v]
-            else:
-                marginal += self.adj[u, v]
-        # self.marginal_cache[(S, u)] = marginal
-        return marginal
+    def unreduce(self, S):
+        return self.N - S

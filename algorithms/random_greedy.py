@@ -1,49 +1,50 @@
 import random
 import numpy as np
 from tqdm import trange
-from submodulars import Dummy
+from submodulars import Dummy, Complement
 
 
-def get_max_subset(f, S, big_set, k):
+def get_max_subset(submod, S, big_set, k):
     """
-    Gets subset of size k that maximizes sum_{u in
-    :param f:
+    Gets subset of size k that maximizes sum_{u in S}f_u(v) for v in N
+
+    :param submod:
     :param S:
     :param big_set:
     :param k:
-    :return:
+    :return: subset
     """
 
     marginals = []
     for u in big_set:
-        marginals.append((u, f.marginal(S, u)))
+        marginals.append((u, submod.marginal(S, u)))
     sorted_marginals = sorted(marginals, key=lambda elem: elem[1])
     return set([elem[0] for elem in sorted_marginals[:k]])
 
 
-def reduce1(f, k):
+def reduce_leq(submod, k):
     """
     Preprocess original universal set so that the size of new set is geq 2k
 
-    :param f: submodular function
+    :param submod: submodular function
     :param k: k
     :return: new submodular function
 
     """
-    return Dummy(f, 2 * k)
+    return Dummy(submod, 2 * k), k
 
 
-def reduce2(f, k):
+def reduce_eq(submod, k):
     """
     Preprocess original universal set so that the size of new set is geq 2k
-    :param f: submodular function
+    :param submod: submodular function
     :param k: k
     :return: new submodular function
     """
-    if len(f) >= 2 * k:
-        return f
+    if len(submod) >= 2 * k:
+        return submod, k
     else:
-        return Dummy(f, 2 * k - len(f))
+        return Complement(submod), len(submod) - k
 
 
 def wide_size(i, k):
@@ -53,10 +54,10 @@ def wide_size(i, k):
     return k
 
 
-def random_greedy(f, k, mode='normal', constraint='eq', seed=None):
+def random_greedy(submod, k, mode='normal', constraint='eq', seed=None):
     """
 
-    :param f: Submodular object
+    :param submod: Submodular object
     :param k: size of subset constraint
     :param mode: either 'normal' or 'wide'
     :param constraint: either 'leq' or 'eq'
@@ -71,20 +72,20 @@ def random_greedy(f, k, mode='normal', constraint='eq', seed=None):
         raise ValueError('mode is either normal or wide')
 
     if constraint == 'eq':
-        reduce_fn = reduce2
+        reduce_fn = reduce_eq
     elif constraint == 'leq':
-        reduce_fn = reduce1
+        reduce_fn = reduce_leq
     else:
         raise ValueError('constraint is either "leq" or "eq"')
 
-    return _random_greedy(f, k, reduce_fn, size_fn)
+    return _random_greedy(submod, k, reduce_fn, size_fn)
 
 
-def _random_greedy(f, k, reduce_fn, size_fn):
+def _random_greedy(submod, k, reduce_fn, size_fn):
     """
     Runs random greedy algorithm. Assumes 2k <= |N|
 
-    :param f: non-negative submodular function that takes in a subset of N
+    :param submod: non-negative submodular function that takes in a subset of N
     and returns a real value
     :param k: max size of return set (cardinality
     constraint)
@@ -93,14 +94,16 @@ def _random_greedy(f, k, reduce_fn, size_fn):
     :return: a subset of N, obj(soln)
     """
 
-    f = reduce_fn(f, k)
+    submod, k = reduce_fn(submod, k)
     curr_set = set()
-    curr_set_comp = f.universe().copy()
+    curr_set_comp = submod.universe().copy()
     for i in trange(k):
-        M = get_max_subset(f, curr_set, curr_set_comp, size_fn(i + 1))
+        M = get_max_subset(submod, curr_set, curr_set_comp, size_fn(i + 1))
         new_element = random.sample(M, 1)[0]
         curr_set.add(new_element)
         curr_set_comp.remove(new_element)
-    return curr_set, f.eval(curr_set)
+    approx_obj = submod.eval(curr_set)
+    approx_set = submod.unreduce(curr_set)
+    return approx_set, approx_obj
 
 
