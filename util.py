@@ -1,12 +1,13 @@
 import numpy as np
 import random
+import os
+
+TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def get_mean(fn, num_samples):
-    sum = 0
-    for i in range(num_samples):
-        sum += fn()
-    return sum / num_samples
+def get_stats(fn, num_samples):
+    vals = np.array([fn() for _ in range(num_samples)])
+    return vals.mean(), vals.max(), vals.std()
 
 
 def generate_rand_graph(n, m, seed=None):

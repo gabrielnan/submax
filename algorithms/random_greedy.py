@@ -18,7 +18,7 @@ def get_max_subset(submod, S, big_set, k):
     marginals = []
     for u in big_set:
         marginals.append((u, submod.marginal(S, u)))
-    sorted_marginals = sorted(marginals, key=lambda elem: elem[1])
+    sorted_marginals = sorted(marginals, key=lambda elem: elem[1], reverse=True)
     return set([elem[0] for elem in sorted_marginals[:k]])
 
 
@@ -97,6 +97,7 @@ def _random_greedy(submod, k, reduce_fn, size_fn):
     submod, k = reduce_fn(submod, k)
     curr_set = set()
     curr_set_comp = submod.universe().copy()
+    # for i in range(k):
     for i in trange(k):
         M = get_max_subset(submod, curr_set, curr_set_comp, size_fn(i + 1))
         new_element = random.sample(M, 1)[0]

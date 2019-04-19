@@ -9,5 +9,5 @@ setup(
    author_email='gabriel.nakajima.an@gmail.com',
    url='https://github.com/gabrielnan/submax',
    packages=find_packages(),
-   install_requires=['tqdm', 'numpy', 'networkx', 'matplotlib'],
+   install_requires=['tqdm', 'numpy', 'networkx', 'matplotlib', 'colormath'],
 )
